@@ -1,17 +1,60 @@
 const http = require('http');
 const express = require('express')
+const es6Renderer = require('express-es6-template-engine');
 const db = require('./db');  /* this requires a local file not a preloaded syntax like lines 1 and 2 */
+const radLogger = require('./radLogger');
+// const checkIfAwesome = require('./awesomeCheck')
+const bodyParser = require('body-parser')
 
 const hostname= '127.0.0.1'
 const port = 3000;
 
 const app = express();
 
+app.engine('html', es6Renderer) // register html template engine
+app.set('views', 'templates') // look for templates in the 'templates' folder
+app.set('view engine', 'html') // use the html engine for view rendering
+
 const server = http.createServer(app);
 
-// app.get('/', (req, res) => {
-//   res.send('Hello World!');
-// });
+
+
+app.use(radLogger);
+// app.use(checkIfAwesome)
+
+app.use(express.static('public')); /* look in 'public' for any files */
+
+
+// parse JSON data
+app.use(bodyParser.json());
+
+// parse Form Data
+app.use(bodyParser.urlencoded({extended: false }));
+
+app.get('/', (req, res) => {
+  // render the 'templates/home.html' file
+  // looks in templates folder by default
+  // don't need to include .html either
+  res.render('home', {
+    locals: {
+      title: 'Avengers Address Book'  
+    },
+    partials: {
+      head: '/partials/head'
+    }
+  }); 
+});
+
+app.get('/about', (req, res) => {
+  res.render('about', {
+    locals: {
+    title: 'Avengers Address Book'
+  },
+    partials: {
+    head: '/partials/head'
+  }
+  });
+});
 
 // app.get('/cats', (req, res) => {
 //   res.end('Meow!  Cats are evil.');
@@ -33,12 +76,16 @@ const server = http.createServer(app);
 // })
 
 
-app.get('/friends', (req, res) => {
-  let html = ''
-  db.forEach(friend => {
-    html += `<li>${friend.name}</li>`
+app.get('/friends', (req, res) => {  
+  res.render('friends', {
+    locals: {
+      title: 'Friends List',
+      friends: db
+    },
+    partials: {
+      head: '/partials/head'
+    }
   })
-  res.send(html)
 })
 
 /* :handle tells express to look for the parameter handle, the req.params.handle matches what is behind the :  */
@@ -52,10 +99,17 @@ app.get('/friends/:handle', (req, res) => {
   })
 
   if (foundFriend){
-    let html = `<h1>Hello ${foundFriend.name}</h1>`
-    html += `<h2>${foundFriend.handle}</h2>`
-    html += `<p>${foundFriend.skill}</p>`
-    res.send(html);    
+    res.render('friendSingle', {
+      locals: {
+        friend: foundFriend, 
+      title: 'Avengers Address Book'
+    },
+      partials: {
+      head: '/partials/head'
+    }
+  
+      
+    })   
   } else {
     res.status(404)
     res.send('Could not find user with that handle')
